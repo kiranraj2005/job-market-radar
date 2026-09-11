@@ -61,6 +61,9 @@ SKILL_ALIASES = {
     "LLM": ["llm", "large language model"],
     "REST API": ["rest api", "restful api"],
     "Power BI": ["power bi", "powerbi"],
+    "Azure": ["azure"],
+    "C++": ["c++"],
+    "Excel": ["excel"],
 }
 
 
