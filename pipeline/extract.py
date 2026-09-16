@@ -1,4 +1,5 @@
 import requests
+import re
 from datetime import datetime, timezone
 
 API_URL = "https://www.arbeitnow.com/api/job-board-api"
@@ -29,6 +30,13 @@ ROLE_KEYWORDS = {
     "machine learning": "ai",
     "ai engineer": "ai",
     "business intelligence": "analyst",
+    "data platform": "engineer",
+    "data architecture": "engineer",
+    "data science": "scientist",
+    "ai analyst": "analyst",
+    "ai architect": "ai",
+    "ai developer": "ai",
+    "agentic ai": "ai",
 }
 
 
@@ -42,7 +50,8 @@ def is_german(location):
 
 
 def match_role_type(title):
-    t = title.lower()
+    t = re.sub(r"\([^)]*\)", " ", title.lower())
+    t = re.sub(r"\s+", " ", t).strip()
     for keyword, role_type in ROLE_KEYWORDS.items():
         if keyword in t:
             return role_type
@@ -68,12 +77,16 @@ def fetch_all_pages():
 def extract():
     raw_postings = fetch_all_pages()
     results = []
+    dropped_non_german = 0
+    dropped_unclassified = 0
 
     for job in raw_postings:
         if not is_german(job["location"]):
+            dropped_non_german += 1
             continue
         role_type = match_role_type(job["title"])
         if role_type is None:
+            dropped_unclassified += 1
             continue
 
         results.append({
@@ -87,11 +100,25 @@ def extract():
             "description_html": job["description"],
         })
 
-    return results
+    stats = {
+        "raw": len(raw_postings),
+        "dropped_non_german": dropped_non_german,
+        "dropped_unclassified": dropped_unclassified,
+        "survivors": len(results),
+    }
+
+    return results, stats
 
 
 if __name__ == "__main__":
-    jobs = extract()
-    print(f"Fetched 3 pages, filtered down to {len(jobs)} relevant German postings\n")
+    jobs, stats = extract()
+    print(
+        f"Raw: {stats['raw']}  ->  German: {stats['raw'] - stats['dropped_non_german']}  "
+        f"->  Role-relevant: {stats['survivors']}"
+    )
+    print(
+        f"Dropped non-German: {stats['dropped_non_german']}, "
+        f"dropped unclassified role: {stats['dropped_unclassified']}"
+    )
     for j in jobs[:5]:
         print(j)
