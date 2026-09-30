@@ -7,6 +7,7 @@ CREATE TABLE jobs (
   city        TEXT,
   remote      BOOLEAN,
   role_type   TEXT,
+  posting_url TEXT,
   posted_at   DATE,
   fetched_at  TIMESTAMP DEFAULT now(),
   description TEXT,

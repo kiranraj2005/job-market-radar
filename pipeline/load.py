@@ -27,21 +27,22 @@ def upsert_skill(cur, skill_name):
 def upsert_job(cur, job):
     cur.execute(
         """
-        INSERT INTO jobs (job_id, title, company, city, remote, role_type, posted_at, description, fetched_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp())
+        INSERT INTO jobs (job_id, title, company, city, remote, role_type, posting_url, posted_at, description, fetched_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp())
         ON CONFLICT (job_id) DO UPDATE SET
             title = EXCLUDED.title,
             company = EXCLUDED.company,
             city = EXCLUDED.city,
             remote = EXCLUDED.remote,
             role_type = EXCLUDED.role_type,
+            posting_url = EXCLUDED.posting_url,
             posted_at = EXCLUDED.posted_at,
             description = EXCLUDED.description,
             fetched_at = clock_timestamp()
         """,
         (
             job["job_id"], job["title"], job["company"], job["city"],
-            job["remote"], job["role_type"], job["posted_at"], job["description"],
+            job["remote"], job["role_type"], job["posting_url"], job["posted_at"], job["description"],
         ),
     )
 

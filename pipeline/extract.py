@@ -98,6 +98,7 @@ def extract():
             "role_type": role_type,
             "posted_at": datetime.fromtimestamp(job["created_at"], tz=timezone.utc).date(),
             "description_html": job["description"],
+            "posting_url": job["url"],
         })
 
     stats = {
