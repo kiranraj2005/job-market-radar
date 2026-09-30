@@ -25,20 +25,10 @@ def upsert_skill(cur, skill_name):
 
 
 def upsert_job(cur, job):
-    """
-    Upsert one job row, keyed on job_id. On conflict, update every field
-    a re-scrape might change, and always bump fetched_at.
-
-    Uses clock_timestamp(), not now() - now() returns the time the
-    CURRENT TRANSACTION began and stays frozen for every statement in
-    that transaction, which silently breaks "did fetched_at actually
-    update" style checks if multiple upserts share one transaction.
-    clock_timestamp() always reflects the real moment this statement runs.
-    """
     cur.execute(
         """
-        INSERT INTO jobs (job_id, title, company, city, remote, role_type, posted_at, fetched_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, clock_timestamp())
+        INSERT INTO jobs (job_id, title, company, city, remote, role_type, posted_at, description, fetched_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, clock_timestamp())
         ON CONFLICT (job_id) DO UPDATE SET
             title = EXCLUDED.title,
             company = EXCLUDED.company,
@@ -46,11 +36,12 @@ def upsert_job(cur, job):
             remote = EXCLUDED.remote,
             role_type = EXCLUDED.role_type,
             posted_at = EXCLUDED.posted_at,
+            description = EXCLUDED.description,
             fetched_at = clock_timestamp()
         """,
         (
             job["job_id"], job["title"], job["company"], job["city"],
-            job["remote"], job["role_type"], job["posted_at"],
+            job["remote"], job["role_type"], job["posted_at"], job["description"],
         ),
     )
 
@@ -78,12 +69,6 @@ def link_job_skills(cur, job_id, skill_ids):
 
 
 def load_jobs(jobs):
-    """
-    Load a batch of extracted postings into Postgres. Commits once PER
-    JOB (not once for the whole batch), so one malformed posting can't
-    roll back everything else already loaded that run - it's skipped
-    with a printed warning instead of crashing the whole pipeline.
-    """
     conn = get_connection()
     cur = conn.cursor()
     loaded = 0
@@ -91,8 +76,9 @@ def load_jobs(jobs):
 
     for job in jobs:
         try:
-            upsert_job(cur, job)
             cleaned = clean_description(job.get("description_html", ""))
+            job["description"] = cleaned
+            upsert_job(cur, job)
             skills = extract_skills(cleaned)
             skill_ids = [upsert_skill(cur, name) for name in skills]
             link_job_skills(cur, job["job_id"], skill_ids)

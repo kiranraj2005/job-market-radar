@@ -9,6 +9,7 @@ CREATE TABLE jobs (
   role_type   TEXT,
   posted_at   DATE,
   fetched_at  TIMESTAMP DEFAULT now(),
+  description TEXT,
   embedding   vector(3072)
 );
 
