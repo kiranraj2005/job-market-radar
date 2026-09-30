@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE jobs (
   job_id      TEXT PRIMARY KEY,
   title       TEXT,
@@ -6,7 +8,8 @@ CREATE TABLE jobs (
   remote      BOOLEAN,
   role_type   TEXT,
   posted_at   DATE,
-  fetched_at  TIMESTAMP DEFAULT now()
+  fetched_at  TIMESTAMP DEFAULT now(),
+  embedding   vector(3072)
 );
 
 CREATE TABLE skills (
