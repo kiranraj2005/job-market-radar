@@ -95,3 +95,42 @@ def extract_skills(cleaned_text):
         for canonical, patterns in _SKILL_PATTERNS.items()
         if any(p.search(cleaned_text) for p in patterns)
     ]
+
+_YEAR_RANGE_RE = re.compile(r"(\d+)\s*(?:-|to)\s*\d+\s*\+?\s*years?", re.IGNORECASE)
+_YEAR_SIMPLE_RE = re.compile(r"(\d+)\s*\+?\s*years?", re.IGNORECASE)
+_YEAR_GERMAN_MINDESTENS_RE = re.compile(r"mindestens\s+(\d+)\s*jahr", re.IGNORECASE)
+_YEAR_GERMAN_SIMPLE_RE = re.compile(r"(\d+)\s*jahren?\s*(?:berufs)?erfahrung", re.IGNORECASE)
+
+_YEAR_PATTERNS = [
+    _YEAR_RANGE_RE,
+    _YEAR_SIMPLE_RE,
+    _YEAR_GERMAN_MINDESTENS_RE,
+    _YEAR_GERMAN_SIMPLE_RE,
+]
+
+
+def extract_min_years(cleaned_text):
+    """
+    Scan CLEANED text (output of clean_description, same contract as
+    extract_skills) for an explicit years-of-experience requirement and
+    return the minimum number of years as an int, or None if no such
+    mention is found.
+
+    This is Layer 1 (cheap, deterministic regex) of the two-layer
+    entry-level detector - Layer 2 is a separate Gemini judgment pass for
+    cases that imply seniority without stating a number (e.g. "proven
+    track record of independently delivering production systems").
+
+    For a range like "2-4 years" this returns the LOWER bound (2) - the
+    minimum years actually required to be considered for the role.
+    Covers both English ("3 years", "2-4 years experience") and German
+    ("mindestens 3 Jahre Erfahrung", "3 Jahren Berufserfahrung") phrasing.
+    """
+    if not cleaned_text:
+        return None
+    for pattern in _YEAR_PATTERNS:
+        match = pattern.search(cleaned_text)
+        if match:
+            return int(match.group(1))
+    return None
+

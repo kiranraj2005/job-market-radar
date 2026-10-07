@@ -8,7 +8,7 @@ Run with:
     python3 -m pytest tests/test_transform.py -v
 """
 
-from pipeline.transform import normalize_entities, strip_html_tags, clean_description, extract_skills
+from pipeline.transform import normalize_entities, strip_html_tags, clean_description, extract_skills, extract_min_years
 
 
 def test_normalize_entities_single_escaped():
@@ -60,3 +60,16 @@ def test_extract_skills_handles_slash_in_phrase():
 
 def test_extract_skills_no_match_returns_empty_list():
     assert extract_skills("We are a friendly team that values collaboration.") == []
+
+
+def test_extract_min_years_simple_english():
+    assert extract_min_years("We require 3 years of experience in Python.") == 3
+
+def test_extract_min_years_range():
+    assert extract_min_years("Looking for someone with 2-4 years experience.") == 2
+
+def test_extract_min_years_german():
+    assert extract_min_years("Mindestens 3 Jahre Erfahrung erforderlich.") == 3
+
+def test_extract_min_years_none_found():
+    assert extract_min_years("Join our fast-growing team as a data engineer.") is None
