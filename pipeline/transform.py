@@ -134,3 +134,23 @@ def extract_min_years(cleaned_text):
             return int(match.group(1))
     return None
 
+_ENTRY_LEVEL_KEYWORDS = [
+    "junior", "entry level", "entry-level", "graduate", "trainee",
+    "werkstudent", "berufseinsteiger",
+]
+
+
+def looks_entry_level(title):
+    """
+    Check whether a job TITLE itself claims to be entry-level/junior -
+    independent of whether the description backs that up. Used to decide
+    when it's worth spending a Gemini judge_seniority() call: only on
+    titles that claim entry-level but where extract_min_years() found no
+    explicit number, since that's the only case where there's something
+    to actually verify.
+    """
+    if not title:
+        return False
+    t = title.lower()
+    return any(keyword in t for keyword in _ENTRY_LEVEL_KEYWORDS)
+

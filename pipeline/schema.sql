@@ -11,7 +11,9 @@ CREATE TABLE jobs (
   posted_at   DATE,
   fetched_at  TIMESTAMP DEFAULT now(),
   description TEXT,
-  embedding   vector(3072)
+  embedding   vector(3072),
+  min_years_required  INTEGER,
+  experience_mismatch BOOLEAN
 );
 
 CREATE TABLE skills (

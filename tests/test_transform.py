@@ -8,7 +8,7 @@ Run with:
     python3 -m pytest tests/test_transform.py -v
 """
 
-from pipeline.transform import normalize_entities, strip_html_tags, clean_description, extract_skills, extract_min_years
+from pipeline.transform import normalize_entities, strip_html_tags, clean_description, extract_skills, extract_min_years, looks_entry_level
 
 
 def test_normalize_entities_single_escaped():
@@ -73,3 +73,24 @@ def test_extract_min_years_german():
 
 def test_extract_min_years_none_found():
     assert extract_min_years("Join our fast-growing team as a data engineer.") is None
+
+def test_looks_entry_level_junior():
+    assert looks_entry_level("Junior Data Engineer") is True
+
+
+def test_looks_entry_level_graduate():
+    assert looks_entry_level("Graduate Software Developer") is True
+
+
+def test_looks_entry_level_german_werkstudent():
+    assert looks_entry_level("Werkstudent Data Analytics (m/w/d)") is True
+
+
+def test_looks_entry_level_senior_is_false():
+    assert looks_entry_level("Senior Data Platform Engineer") is False
+
+
+def test_looks_entry_level_blank():
+    assert looks_entry_level("") is False
+    assert looks_entry_level(None) is False
+
