@@ -3,7 +3,10 @@ from google import genai
 from google.genai.errors import ServerError
 from pipeline.retrieve import find_matching_jobs
 
-GENERATION_MODEL = "gemini-3.6-flash"
+GENERATION_MODEL = "gemini-3.8-flash"  # migrated from 3.6-flash 9 Oct 2026 - 3.6
+# failed 100% of calls across three separate days (7, 8, 9 Oct), confirmed via
+# Google's own dev forum as a known issue with that specific model. 3.8 (current
+# flagship) verified working with real, good-quality output on this exact prompt.
 
 PROMPT_TEMPLATE = """You are a career advisor helping a job seeker understand how their CV compares to real, current job postings in the German job market.
 

@@ -1,14 +1,11 @@
 from google import genai
-from pipeline.analyze import generate_with_retry
+from pipeline.analyze import generate_with_retry, GENERATION_MODEL
 
-# Deliberately NOT reusing analyze.py's GENERATION_MODEL ("gemini-3.6-flash"): that
-# model returned 503 UNAVAILABLE on every call across two separate days (8 Oct 2026),
-# confirmed on Google's own dev forum as a known issue. gemini-3.8-flash (current
-# flagship, separate daily quota bucket) succeeded on 2/2 real judge_seniority() calls
-# with correct output, so it's used here specifically - independent of analyze.py's
-# model, which is still pinned to 3.6-flash pending its OWN re-verification (its much
-# longer prompt hasn't been confirmed against 3.8 yet - see portfolio build log).
-JUDGMENT_MODEL = "gemini-3.8-flash"
+# Was on its own separate JUDGMENT_MODEL constant (gemini-3.8-flash) while
+# analyze.py's GENERATION_MODEL was still unverified/broken on gemini-3.6-flash.
+# As of 9 Oct 2026, analyze.py migrated to gemini-3.8-flash too (verified with real
+# output), so both modules are back on one shared model constant - no reason to keep
+# them split now that they agree.
 
 JUDGMENT_PROMPT_TEMPLATE = """You are screening a job posting to check whether it is genuinely suitable for an entry-level / junior candidate, or whether it actually demands significant prior experience without stating an explicit number of years.
 
@@ -27,7 +24,7 @@ Respond with ONLY a JSON object, no other text, in exactly this shape:
 def judge_seniority(title, description):
     client = genai.Client()
     prompt = JUDGMENT_PROMPT_TEMPLATE.format(title=title, description=description)
-    response = generate_with_retry(client, JUDGMENT_MODEL, prompt)
+    response = generate_with_retry(client, GENERATION_MODEL, prompt)
 
     import json
     text = response.text.strip()
