@@ -9,6 +9,9 @@ model call trustworthy.
 
 [![CI](https://github.com/kiranraj2005/job-market-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/kiranraj2005/job-market-radar/actions/workflows/ci.yml)
 
+**[Live demo →](https://job-market-radar-uunkx88vv4mfizleehjsg3.streamlit.app)** — try the CV gap
+analysis against real, live postings, or browse the filtered job list yourself.
+
 ## Why this project
 
 German IT hiring data (Bitkom, Hays, Bundesagentur für Arbeit — Sep 2026) shows entry-level demand
@@ -64,7 +67,8 @@ A three-layer pipeline that checks whether a posting that *reads* as entry-level
 
 A two-page Streamlit interface on top of all of the above: a filterable job browser (entry-level-only,
 remote-only, role-type filters) and the CV gap-analysis tool, both backed by the real pipeline — not a
-mockup.
+mockup. **Live and public:** https://job-market-radar-uunkx88vv4mfizleehjsg3.streamlit.app, running
+against a hosted PostgreSQL + pgvector instance (Neon), not just locally.
 
 ### Infrastructure
 
@@ -100,8 +104,10 @@ export GEMINI_API_KEY=your_gemini_key_here
 streamlit run app.py
 ```
 
-Opens at `localhost:8501` with the job browser and CV analysis tool. The web app isn't deployed anywhere
-public yet — it runs against the Postgres instance from the Docker Compose step above.
+Opens at `localhost:8501` with the job browser and CV analysis tool, running against the Postgres
+instance from the Docker Compose step above. A live, publicly deployed version is also available at
+https://job-market-radar-uunkx88vv4mfizleehjsg3.streamlit.app, running against a hosted Postgres +
+pgvector instance (Neon) instead of local Docker.
 
 ## Architecture
 
@@ -137,8 +143,9 @@ the same database.
 
 ## Tech stack
 
-Python 3.13 · PostgreSQL 16 + pgvector · Google Gemini (`gemini-embedding-001`, `gemini-3.8-flash`) ·
-Streamlit · Docker & Docker Compose · pytest · GitHub Actions
+Python 3.13 · PostgreSQL 16 + pgvector (local via Docker, hosted via Neon for the live deployment) ·
+Google Gemini (`gemini-embedding-001`, `gemini-3.8-flash`) · Streamlit · Streamlit Community Cloud ·
+Docker & Docker Compose · pytest · GitHub Actions
 
 ## Real engineering problems found and fixed (not just checkboxes)
 
@@ -185,8 +192,6 @@ of which run automatically on every push.
 
 ## Roadmap
 
-- Deploy the web app publicly (Streamlit Community Cloud), which requires migrating the database to a
-  free-tier hosted Postgres with pgvector support, since the current database only runs locally
 - Trend tracking on the accumulating dataset (e.g. how in-demand skills and the entry-level mismatch rate
   shift over time)
 - AWS deployment (App Runner/ECS + RDS), building directly on the containerization work already done
