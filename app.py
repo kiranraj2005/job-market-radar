@@ -59,7 +59,7 @@ def render_browse_jobs():
             "Remote": "Yes" if j["remote"] else "No",
             "Role type": j["role_type"],
             "Posted": j["posted_at"],
-            "Min. years (detected)": j["min_years_required"] if j["min_years_required"] is not None else "-",
+            "Min. years (detected)": str(j["min_years_required"]) if j["min_years_required"] is not None else "-",
             "Mismatch flagged": "⚠️ Yes" if j["experience_mismatch"] else "No",
             "Posting": j["posting_url"],
         }
