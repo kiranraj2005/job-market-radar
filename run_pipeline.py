@@ -9,6 +9,7 @@ last, once we know the plain Python version works correctly.
 
 from pipeline.extract import extract
 from pipeline.load import load_jobs
+from pipeline.trends import capture_snapshot
 
 if __name__ == "__main__":
     jobs, stats = extract()
@@ -20,3 +21,10 @@ if __name__ == "__main__":
 
     loaded, skipped = load_jobs(jobs)
     print(f"Loaded {loaded} jobs, skipped {skipped}.")
+
+    snapshot = capture_snapshot()
+    print(
+        f"Captured trend snapshot: {snapshot['total_postings']} total postings, "
+        f"{snapshot['entry_level_mismatch_rate']}% entry-level mismatch rate, "
+        f"avg {snapshot['avg_min_years_required']} min years required."
+    )

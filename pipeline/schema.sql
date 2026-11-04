@@ -26,3 +26,12 @@ CREATE TABLE job_skills (
   skill_id    INT REFERENCES skills(skill_id),
   PRIMARY KEY (job_id, skill_id)
 );
+CREATE TABLE trend_snapshots (
+  snapshot_id                SERIAL PRIMARY KEY,
+  captured_at                TIMESTAMP DEFAULT now(),
+  total_postings             INTEGER,
+  entry_level_mismatch_rate  NUMERIC(5,2),
+  avg_min_years_required     NUMERIC(5,2),
+  skill_counts                JSONB,
+  role_type_counts           JSONB
+);
