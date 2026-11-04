@@ -1,0 +1,36 @@
+name: Scheduled pipeline run
+
+# Keeps the "living dataset" alive: pulls fresh postings, loads them into
+# the real Neon database, embeds them, and captures a trend snapshot -
+# automatically, once a day, independent of whether anyone's laptop is on.
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC daily
+  workflow_dispatch:        # lets us trigger a run manually from the Actions tab, for testing
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline (extract, load, snapshot)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python3 run_pipeline.py
+
+      - name: Embed any new postings
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python3 -m pipeline.embed
