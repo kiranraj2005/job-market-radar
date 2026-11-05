@@ -5,7 +5,7 @@ name: Scheduled pipeline run
 # automatically, once a day, independent of whether anyone's laptop is on.
 on:
   schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC daily
+    - cron: '17 6 * * *'  # 06:17 UTC daily - off the top of the hour, when GitHub's cron queue is least congested
   workflow_dispatch:        # lets us trigger a run manually from the Actions tab, for testing
 
 jobs:
