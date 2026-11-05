@@ -70,6 +70,15 @@ remote-only, role-type filters) and the CV gap-analysis tool, both backed by the
 mockup. **Live and public:** https://job-market-radar-uunkx88vv4mfizleehjsg3.streamlit.app, running
 against a hosted PostgreSQL + pgvector instance (Neon), not just locally.
 
+### Trend tracking
+
+Every pipeline run captures a snapshot — total postings, the entry-level mismatch rate, average detected
+minimum years required, and skill/role-type demand — into its own `trend_snapshots` table. A third
+Streamlit page plots the mismatch rate and minimum-years trend over time, plus the latest skill and
+role-type demand breakdown. The dataset isn't just living, it's self-updating: a scheduled GitHub Actions
+workflow runs the full pipeline once a day (`DATABASE_URL`/`GEMINI_API_KEY` from repo secrets, no laptop
+required), so the trend history keeps growing on its own.
+
 ### Infrastructure
 
 5. **Run reproducibly, anywhere** — the data pipeline and database are containerized via Docker Compose,
@@ -127,14 +136,20 @@ pgvector instance (Neon) instead of local Docker.
    load.py ──► resolve_experience (EL-1, Layer 3) ──► idempotent upsert
         │
         ▼
-  PostgreSQL + pgvector  (jobs / skills / job_skills)
+  PostgreSQL + pgvector  (jobs / skills / job_skills / trend_snapshots)
         │
         ├──► embed.py ──► gemini-embedding-001 ──► embedding column
         │
+        ├──► trends.py ──► capture_snapshot() ──► trend_snapshots (one row per pipeline run)
+        │
         └──► app.py (Streamlit)
                 ├─ Browse Jobs ──► browse.py ──► filtered SQL (incl. EL-1 filter)
-                └─ CV Gap Analysis ──► retrieve.py (vector search) ──► analyze.py (gemini-3.8-flash,
-                                        citation-grounded generation)
+                ├─ CV Gap Analysis ──► retrieve.py (vector search) ──► analyze.py (gemini-3.8-flash,
+                │                       citation-grounded generation)
+                └─ Trends ──► trends.py (get_trend_history) ──► mismatch-rate / min-years charts,
+                              skill & role-type demand
+
+  GitHub Actions (schedule: daily, 06:17 UTC) ──► run_pipeline.py + embed.py, independent of any laptop
 ```
 
 The pipeline and database run as separate Docker Compose services (`pipeline`, `db`), with the pipeline
@@ -145,7 +160,8 @@ the same database.
 
 Python 3.13 · PostgreSQL 16 + pgvector (local via Docker, hosted via Neon for the live deployment) ·
 Google Gemini (`gemini-embedding-001`, `gemini-3.8-flash`) · Streamlit · Streamlit Community Cloud ·
-Docker & Docker Compose · pytest · GitHub Actions
+Docker & Docker Compose · pandas · pytest · GitHub Actions (CI on every push, plus a daily scheduled
+pipeline run)
 
 ## Real engineering problems found and fixed (not just checkboxes)
 
@@ -187,13 +203,22 @@ returned against real data (not by reading the code and assuming it was right), 
 both the original entry-level-title check *and* the absence of a flagged mismatch, reusing the exact same
 function the data pipeline uses at write time so the two can never drift apart.
 
+**Diagnosing a missed scheduled job without guessing at a single cause.** After adding a GitHub Actions
+workflow to keep the dataset growing automatically, its first scheduled (cron) run simply didn't happen —
+only a manually triggered run showed up in the Actions history. Rather than assume one explanation, I
+checked two independent signals: GitHub's own status page, which showed several unrelated Actions
+incidents in the hours before the missed run (evidence the platform was unusually unstable, though not a
+direct cause on its own), and a well-known GitHub Actions anti-pattern independent of any outage —
+scheduling a cron job for exactly the top of the hour, when every other "nice round time" workflow on
+GitHub fires at once and the platform deprioritizes the resulting pile-up. Fixed by moving the schedule
+off the hour mark, and paired it with a manual `workflow_dispatch` trigger specifically so a new cron
+schedule's correctness can be verified on demand instead of waiting up to a day for the next real firing.
+
 Every fix above is backed by an automated pytest suite and the full Docker Compose integration test, both
 of which run automatically on every push.
 
 ## Roadmap
 
-- Trend tracking on the accumulating dataset (e.g. how in-demand skills and the entry-level mismatch rate
-  shift over time)
 - AWS deployment (App Runner/ECS + RDS), building directly on the containerization work already done
 
 ## Data source
