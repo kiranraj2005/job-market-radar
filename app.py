@@ -12,6 +12,7 @@ Run with:
     streamlit run app.py
 """
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -127,16 +128,45 @@ def render_trends():
     # there's an actual trend to show.
     enough_history = len(history) >= 2
 
+    # st.line_chart's automatic Vega-Lite axis picks its own tick spacing and
+    # number format from the data range alone. With these two metrics - a
+    # mismatch rate usually under a few percent, and avg_min_years clustered
+    # tightly around 4-6 - that auto-formatting produces confusing, decimal-
+    # stripped tick labels (e.g. "454" instead of "4.54"). Building the chart
+    # explicitly with Altair (the library st.line_chart wraps anyway) lets us
+    # force a real 2-decimal axis format and a non-zero-anchored scale, so the
+    # chart reads correctly regardless of how narrow the data range is.
+    def _trend_line_chart(column, y_title):
+        data = df.reset_index()
+        chart = (
+            alt.Chart(data)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("captured_at:T", title="Captured at"),
+                y=alt.Y(
+                    f"{column}:Q",
+                    title=y_title,
+                    axis=alt.Axis(format=".2f"),
+                    scale=alt.Scale(zero=False),
+                ),
+                tooltip=[
+                    alt.Tooltip("captured_at:T", title="Captured at"),
+                    alt.Tooltip(f"{column}:Q", title=y_title, format=".2f"),
+                ],
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
+
     st.markdown("**Genuine entry-level mismatch rate over time (%)**")
     if enough_history:
-        st.line_chart(df["entry_level_mismatch_rate"])
+        _trend_line_chart("entry_level_mismatch_rate", "Mismatch rate (%)")
     else:
         st.metric("Latest snapshot", f"{history[-1]['entry_level_mismatch_rate']}%")
         st.caption("Only one snapshot so far - run the pipeline again later to start a real trend line.")
 
     st.markdown("**Average detected minimum years required, over time**")
     if enough_history:
-        st.line_chart(df["avg_min_years_required"])
+        _trend_line_chart("avg_min_years_required", "Avg min years required")
     else:
         st.metric("Latest snapshot", f"{history[-1]['avg_min_years_required']} years")
         st.caption("Only one snapshot so far - run the pipeline again later to start a real trend line.")

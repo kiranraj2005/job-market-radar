@@ -100,12 +100,20 @@ def get_trend_history():
     )
     rows = cur.fetchall()
     conn.close()
+    # psycopg2 returns NUMERIC columns (entry_level_mismatch_rate,
+    # avg_min_years_required) as Python Decimal objects, not plain floats.
+    # Decimal prints correctly on its own (that's why the single-snapshot
+    # st.metric() fallback in app.py never showed a problem), but Altair's
+    # JSON serialization of a Decimal-typed pandas column silently drops the
+    # decimal point - 4.54 was rendering as 454 on the trend charts. Casting
+    # to float() here, right at the DB boundary, means nothing downstream
+    # (pandas, Altair, Vega-Lite) ever has to handle a Decimal at all.
     return [
         {
             "captured_at": r[0],
             "total_postings": r[1],
-            "entry_level_mismatch_rate": r[2],
-            "avg_min_years_required": r[3],
+            "entry_level_mismatch_rate": float(r[2]) if r[2] is not None else None,
+            "avg_min_years_required": float(r[3]) if r[3] is not None else None,
             "skill_counts": r[4],
             "role_type_counts": r[5],
         }
