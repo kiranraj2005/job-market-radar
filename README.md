@@ -214,6 +214,21 @@ GitHub fires at once and the platform deprioritizes the resulting pile-up. Fixed
 off the hour mark, and paired it with a manual `workflow_dispatch` trigger specifically so a new cron
 schedule's correctness can be verified on demand instead of waiting up to a day for the next real firing.
 
+**Catching a silent type-mismatch bug that never raised an exception.** After the trend-tracking
+feature had multiple days of real history, the "average minimum years required" chart started showing
+nonsensical axis values (`454`, `527`, `550`) with no error anywhere in the stack. My first hypothesis —
+a chart-library formatting quirk — was wrong: switching to an explicit chart spec with a forced decimal
+format just revealed the same wrong number with two trailing zeros appended, proving the number itself,
+not its display, was the problem. My second hypothesis — corrupted source data — was also wrong, and a
+diagnostic query against the live table ruled it out cleanly. The actual bug was one level removed from
+where I was looking: that diagnostic had queried the live table, not the historical snapshot table the
+chart actually reads from. Querying the right table showed the stored values were completely correct —
+just that the database driver returns `NUMERIC` columns as `Decimal` objects rather than plain floats, and
+the charting library's JSON serialization of a `Decimal`-typed column silently drops the decimal point
+with no exception raised. Fixed by casting to `float` once, right at the database boundary, so nothing
+downstream ever has to handle a `Decimal`. Two wrong hypotheses tested and ruled out before the real root
+cause, rather than committing to the first plausible-looking explanation.
+
 Every fix above is backed by an automated pytest suite and the full Docker Compose integration test, both
 of which run automatically on every push.
 
