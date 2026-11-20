@@ -13,7 +13,13 @@ CREATE TABLE jobs (
   description TEXT,
   embedding   vector(3072),
   min_years_required  INTEGER,
-  experience_mismatch BOOLEAN
+  experience_mismatch BOOLEAN,
+  source             TEXT NOT NULL DEFAULT 'arbeitnow',
+  changed_at         TIMESTAMP,
+  employment_type    TEXT,
+  career_changer_ok  BOOLEAN,
+  is_temp_agency     BOOLEAN,
+  content_hash       TEXT
 );
 
 CREATE TABLE skills (
@@ -34,4 +40,11 @@ CREATE TABLE trend_snapshots (
   avg_min_years_required     NUMERIC(5,2),
   skill_counts                JSONB,
   role_type_counts           JSONB
+);
+CREATE TABLE cv_profiles (
+  profile_name  TEXT PRIMARY KEY,
+  content_hash  TEXT,
+  embedding     vector(3072),
+  skills        TEXT[],
+  updated_at    TIMESTAMP DEFAULT now()
 );
