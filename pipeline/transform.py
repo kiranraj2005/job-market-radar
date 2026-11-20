@@ -96,42 +96,72 @@ def extract_skills(cleaned_text):
         if any(p.search(cleaned_text) for p in patterns)
     ]
 
-_YEAR_RANGE_RE = re.compile(r"(\d+)\s*(?:-|to)\s*\d+\s*\+?\s*years?", re.IGNORECASE)
-_YEAR_SIMPLE_RE = re.compile(r"(\d+)\s*\+?\s*years?", re.IGNORECASE)
-_YEAR_GERMAN_MINDESTENS_RE = re.compile(r"mindestens\s+(\d+)\s*jahr", re.IGNORECASE)
-_YEAR_GERMAN_SIMPLE_RE = re.compile(r"(\d+)\s*jahren?\s*(?:berufs)?erfahrung", re.IGNORECASE)
+_NUMBER_WORDS = {
+    "ein": 1, "einem": 1, "einen": 1, "one": 1,
+    "zwei": 2, "two": 2,
+    "drei": 3, "three": 3,
+    "vier": 4, "four": 4,
+    "fünf": 5, "fuenf": 5, "five": 5,
+    "sechs": 6, "six": 6,
+}
+_NUM = r"\b(\d{1,2}|" + "|".join(_NUMBER_WORDS) + r")\b"   # \b: the "00" in "100" never counts
+_GAP = r"(?:[\w\-]+\s+){0,3}?"          # up to 3 words in between, e.g. "relevante praktische"
+_MAX_PLAUSIBLE_YEARS = 15               # "over 100 years of history" is company age, not a requirement
 
+# Explicit numbers, most reliable first
 _YEAR_PATTERNS = [
-    _YEAR_RANGE_RE,
-    _YEAR_SIMPLE_RE,
-    _YEAR_GERMAN_MINDESTENS_RE,
-    _YEAR_GERMAN_SIMPLE_RE,
+    re.compile(_NUM + r"\s*(?:-|–|to|bis)\s*\d{1,2}\s*\+?\s*(?:years?|jahre?n?)", re.IGNORECASE),
+    re.compile(r"(?:mindestens|mind\.|at least|minimum(?: of)?)\s+" + _NUM + r"\s*\+?\s*(?:years?|jahre?n?)", re.IGNORECASE),
+    re.compile(_NUM + r"\s*\+?\s*(?:years?|jahre?n?)\s+" + _GAP + r"(?:of\s+)?" + r"\w*(?:experience|erfahrung)", re.IGNORECASE),
+    re.compile(_NUM + r"\s*\+\s*(?:years?|jahre?n?)", re.IGNORECASE),
+    re.compile(r"\w*erfahrung\s+von\s+(?:mindestens\s+)?" + _NUM + r"\s*jahre?n?", re.IGNORECASE),
 ]
+
+# No number, but clearly senior. Only counts when "Erfahrung"/"experience" follows,
+# so "langjährige Kunden" is ignored. The values are estimates.
+_VAGUE_SENIORITY_PATTERNS = [
+    (re.compile(r"\blangj[äa]hrig\w*\s+" + _GAP + r"\w*erfahrung", re.IGNORECASE), 5),
+    (re.compile(r"\bmehrj[äa]hrig\w*\s+" + _GAP + r"\w*erfahrung", re.IGNORECASE), 3),
+    (re.compile(r"\bmany\s+years\s+(?:of\s+)?" + _GAP + r"experience", re.IGNORECASE), 5),
+    (re.compile(r"\bseveral\s+years\s+(?:of\s+)?" + _GAP + r"experience", re.IGNORECASE), 3),
+]
+
+
+def _to_int(token):
+    token = token.lower()
+    return int(token) if token.isdigit() else _NUMBER_WORDS.get(token)
 
 
 def extract_min_years(cleaned_text):
     """
     Scan CLEANED text (output of clean_description, same contract as
-    extract_skills) for an explicit years-of-experience requirement and
-    return the minimum number of years as an int, or None if no such
-    mention is found.
+    extract_skills) for a years-of-experience requirement and return the
+    minimum number of years as an int, or None if none is found.
 
     This is Layer 1 (cheap, deterministic regex) of the two-layer
     entry-level detector - Layer 2 is a separate Gemini judgment pass for
-    cases that imply seniority without stating a number (e.g. "proven
-    track record of independently delivering production systems").
+    cases that imply seniority in other ways (e.g. "proven track record of
+    independently delivering production systems").
 
-    For a range like "2-4 years" this returns the LOWER bound (2) - the
-    minimum years actually required to be considered for the role.
-    Covers both English ("3 years", "2-4 years experience") and German
-    ("mindestens 3 Jahre Erfahrung", "3 Jahren Berufserfahrung") phrasing.
+    Order matters: explicit numbers win over vague phrases.
+    - Ranges ("2-4 years", "3-5 Jahre") return the LOWER bound.
+    - Digits and number words: "mindestens zwei Jahre", "3+ years",
+      "Berufserfahrung von mindestens 3 Jahren".
+    - Numbers above 15 are ignored ("seit über 100 Jahren" is company age).
+    - No number: "mehrjährige Berufserfahrung" / "several years of
+      experience" -> 3, "langjährige Erfahrung" / "many years of
+      experience" -> 5 (estimates).
     """
     if not cleaned_text:
         return None
     for pattern in _YEAR_PATTERNS:
-        match = pattern.search(cleaned_text)
-        if match:
-            return int(match.group(1))
+        for match in pattern.finditer(cleaned_text):
+            years = _to_int(match.group(1))
+            if years is not None and years <= _MAX_PLAUSIBLE_YEARS:
+                return years
+    for pattern, estimate in _VAGUE_SENIORITY_PATTERNS:
+        if pattern.search(cleaned_text):
+            return estimate
     return None
 
 _ENTRY_LEVEL_KEYWORDS = [

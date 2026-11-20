@@ -94,3 +94,28 @@ def test_looks_entry_level_blank():
     assert looks_entry_level("") is False
     assert looks_entry_level(None) is False
 
+import pytest
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("3+ years of experience in Python", 3),
+    ("2-4 years experience", 2),
+    ("3-5 Jahre Erfahrung", 3),
+    ("mindestens 3 Jahre Erfahrung", 3),
+    ("3 Jahren Berufserfahrung", 3),
+    ("3 Jahre relevante Berufserfahrung", 3),
+    ("mindestens zwei Jahre Berufserfahrung im Bereich BI", 2),
+    ("Berufserfahrung von mindestens 3 Jahren", 3),
+    ("Du hast mehrjährige Berufserfahrung im Data Engineering", 3),
+    ("mehrjährige praktische Erfahrung mit SQL", 3),
+    ("langjährige Projekterfahrung", 5),
+    ("several years of hands-on experience", 3),
+    ("Seit 25 Jahren entwickeln wir Software. Du bringst 2 Jahre Erfahrung mit", 2),
+    ("Wir blicken auf über 100 Jahre Erfahrung zurück", None),
+    ("a company with 100 years of history", None),
+    ("unsere langjährigen Kunden schätzen uns", None),
+    ("erste Erfahrungen mit Python", None),
+    ("", None),
+])
+def test_extract_min_years_german_and_vague(text, expected):
+    assert extract_min_years(text) == expected
