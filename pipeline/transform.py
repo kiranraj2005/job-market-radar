@@ -108,9 +108,10 @@ _NUM = r"\b(\d{1,2}|" + "|".join(_NUMBER_WORDS) + r")\b"   # \b: the "00" in "10
 _GAP = r"(?:[\w\-]+\s+){0,3}?"          # up to 3 words in between, e.g. "relevante praktische"
 _MAX_PLAUSIBLE_YEARS = 15               # "over 100 years of history" is company age, not a requirement
 
-# Explicit numbers, most reliable first
+# Explicit numbers. Each needs a requirement signal ("experience"/"Erfahrung" after it,
+# "mindestens/at least" before it, or a "+"), so "not in 10 years" or "the next 10-20 years" never count.
 _YEAR_PATTERNS = [
-    re.compile(_NUM + r"\s*(?:-|–|to|bis)\s*\d{1,2}\s*\+?\s*(?:years?|jahre?n?)", re.IGNORECASE),
+    re.compile(_NUM + r"\s*(?:-|–|to|bis)\s*\d{1,2}\s*\+?\s*(?:years?|jahre?n?)\s+" + _GAP + r"(?:of\s+)?\w*(?:experience|erfahrung)", re.IGNORECASE),
     re.compile(r"(?:mindestens|mind\.|at least|minimum(?: of)?)\s+" + _NUM + r"\s*\+?\s*(?:years?|jahre?n?)", re.IGNORECASE),
     re.compile(_NUM + r"\s*\+?\s*(?:years?|jahre?n?)\s+" + _GAP + r"(?:of\s+)?" + r"\w*(?:experience|erfahrung)", re.IGNORECASE),
     re.compile(_NUM + r"\s*\+\s*(?:years?|jahre?n?)", re.IGNORECASE),
@@ -143,22 +144,30 @@ def extract_min_years(cleaned_text):
     cases that imply seniority in other ways (e.g. "proven track record of
     independently delivering production systems").
 
-    Order matters: explicit numbers win over vague phrases.
-    - Ranges ("2-4 years", "3-5 Jahre") return the LOWER bound.
-    - Digits and number words: "mindestens zwei Jahre", "3+ years",
-      "Berufserfahrung von mindestens 3 Jahren".
-    - Numbers above 15 are ignored ("seit über 100 Jahren" is company age).
+    - Returns the requirement that appears FIRST in the text. Job ads state
+      the overall bar first and sub-requirements after it ("8+ years in data
+      science, including 3+ years leading teams" -> 8; "mindestens 5 Jahre ...
+      davon mindestens 2 Jahre in verantwortlicher Rolle" -> 5; "at least 3
+      years ... 5+ years preferred" -> 3). Checked on real postings, 20 Nov 2026.
+    - Ranges return the lower bound: "4 bis 5 Jahre Berufserfahrung" -> 4.
+    - Number words count: "mindestens zwei Jahre" -> 2.
+    - A number only counts with a requirement signal, so company age or
+      time phrases ("not in 10 years", "the next 10-20 years") are ignored;
+      numbers above 15 are ignored too.
     - No number: "mehrjährige Berufserfahrung" / "several years of
       experience" -> 3, "langjährige Erfahrung" / "many years of
       experience" -> 5 (estimates).
     """
     if not cleaned_text:
         return None
-    for pattern in _YEAR_PATTERNS:
-        for match in pattern.finditer(cleaned_text):
-            years = _to_int(match.group(1))
-            if years is not None and years <= _MAX_PLAUSIBLE_YEARS:
-                return years
+    found = [
+        (match.start(), _to_int(match.group(1)))
+        for pattern in _YEAR_PATTERNS
+        for match in pattern.finditer(cleaned_text)
+    ]
+    found = [(pos, y) for pos, y in found if y is not None and y <= _MAX_PLAUSIBLE_YEARS]
+    if found:
+        return min(found)[1]          # the requirement that appears FIRST in the text
     for pattern, estimate in _VAGUE_SENIORITY_PATTERNS:
         if pattern.search(cleaned_text):
             return estimate

@@ -119,3 +119,36 @@ import pytest
 ])
 def test_extract_min_years_german_and_vague(text, expected):
     assert extract_min_years(text) == expected
+
+@pytest.mark.parametrize("text, expected", [
+    # Real postings from the database, 20 Nov 2026: each was wrong under the old rules
+    ("starting today and not in 10 years. What is expected of you 3+ years of professional "
+     "experience outside academia", 3),
+    ("starting today and not in 10 years. What is expected of you 8+ years of professional "
+     "experience in data science", 8),
+    ("At least 3 years of experience building and shipping production AI systems; 5+ years "
+     "preferred. ... facilities over the next 10–20 years.", 3),
+    ("4 bis 5 Jahre Berufserfahrung im Cloud Engineering", 4),
+    ("raised €18M in funding (last round 4.5 years ago). You bring 3+ years of building and "
+     "running data pipelines", 3),
+    ("shape industrial facilities over the next 10–20 years.", None),
+])
+def test_extract_min_years_real_postings(text, expected):
+    assert extract_min_years(text) == expected
+
+@pytest.mark.parametrize("text, expected", [
+    # Senior postings: the overall bar comes first, sub-requirements after it
+    ("What we're looking for 8+ years in data science or machine learning, including 3+ years "
+     "leading teams", 8),
+    ("über 30 Jahren Erfahrung steuern Kunden. Mindestens 5 Jahre Erfahrung in der "
+     "IT-Administration oder im IT-Management, davon mindestens 2 Jahre in verantwortlicher Rolle", 5),
+    ("You have 10+ years in ML/AI with 3+ years at Staff+ or Principal level", 10),
+    ("5+ years of experience developing and deploying production software 2+ years of "
+     "experience delivering software services", 5),
+    ("Du bringst mindestens 2 Jahre Berufserfahrung im Bereich Business Intelligence mit. "
+     "Du hast mindestens 1 Jahr Erfahrung mit einem gängigen BI Tool", 2),
+    ("5+ years of experience in cloud engineering or DevOps 3+ years of experience designing "
+     "and implementing Microsoft Azure", 5),
+])
+def test_extract_min_years_overall_requirement_first(text, expected):
+    assert extract_min_years(text) == expected
